@@ -4,6 +4,7 @@ import json
 from document_processor import process_document, truncate_text
 from generators.raid_generator import generate_raid_log
 from generators.summary_generator import generate_executive_summary
+from generators.lessons_generator import generate_lessons_learned
 
 
 # --- Page config ---
@@ -284,7 +285,7 @@ with st.expander("📄 View extracted text", expanded=False):
     st.text(document_text[:3000] + ("..." if len(document_text) > 3000 else ""))
 
 # --- Tabs ---
-tab_raid, tab_summary = st.tabs(["🎯 RAID Log", "📊 Executive Summary"])
+tab_raid, tab_summary, tab_lessons = st.tabs(["🎯 RAID Log", "📊 Executive Summary", "📝 Lessons Learned"])
 
 # --- RAID Log Tab ---
 with tab_raid:
@@ -330,6 +331,7 @@ with tab_raid:
                 )
                 if items:
                     df = pd.DataFrame(items)
+                    df.columns = [col.replace("_", " ").title().replace("Id", "ID") for col in df.columns]
                     st.dataframe(df, use_container_width=True, hide_index=True)
                 else:
                     st.caption("No items identified in the document.")
@@ -373,3 +375,63 @@ with tab_summary:
             file_name="executive_summary.md",
             mime="text/markdown",
         )
+# --- Lessons Learned Tab ---
+with tab_lessons:
+    st.markdown("#### Generate Lessons Learned Report")
+    st.caption(
+        "Analyses project documentation to extract what went well, "
+        "what could be improved, root causes, and recommendations "
+        "for future programmes."
+    )
+
+    if st.button("Generate Lessons Learned", key="lessons_btn", type="primary"):
+        with st.spinner("Analysing document and generating lessons learned report..."):
+            try:
+                lessons_data = generate_lessons_learned(document_text)
+                st.session_state["lessons_data"] = lessons_data
+            except Exception as e:
+                st.error(f"Error generating lessons learned: {e}")
+
+    if "lessons_data" in st.session_state:
+        lessons = st.session_state["lessons_data"]
+
+        if "error" in lessons:
+            st.error(lessons["error"])
+        else:
+            # Programme summary
+            if "programme_summary" in lessons:
+                st.markdown(
+                    f'<div class="summary-card">{lessons["programme_summary"]}</div>',
+                    unsafe_allow_html=True,
+                )
+                st.markdown("")
+
+            for category, label, emoji, css_class in [
+                ("what_went_well", "What Went Well", "✅", "dependencies"),
+                ("what_could_be_improved", "What Could Be Improved", "⚠️", "assumptions"),
+                ("root_causes", "Root Causes", "🔍", "issues"),
+                ("recommendations", "Recommendations", "💡", "risks"),
+                ("strategic_themes", "Strategic Themes", "🎯", "dependencies"),
+            ]:
+                items = lessons.get(category, [])
+                st.markdown(
+                    f'<div class="raid-card {css_class}">'
+                    f"<h4>{emoji} {label} ({len(items)})</h4></div>",
+                    unsafe_allow_html=True,
+                )
+                if items:
+                    df = pd.DataFrame(items)
+                    df.columns = [col.replace("_", " ").title().replace("Id", "ID") for col in df.columns]
+                    st.dataframe(df, use_container_width=True, hide_index=True)
+                else:
+                    st.caption("No items identified in the document.")
+                st.markdown("")
+
+            # Download
+            lessons_json = json.dumps(lessons, indent=2)
+            st.download_button(
+                label="📥 Download Lessons Learned (JSON)",
+                data=lessons_json,
+                file_name="lessons_learned.json",
+                mime="application/json",
+            )
