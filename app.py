@@ -20,7 +20,6 @@ st.markdown("""
     /* Hide default Streamlit branding */
     #MainMenu {visibility: hidden;}
     footer {visibility: hidden;}
-    header {visibility: hidden;}
 
     /* Overall page background */
     .stApp {
