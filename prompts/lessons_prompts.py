@@ -28,7 +28,9 @@ Rules:
   leading to misaligned expectations on delivery scope" is useful.
 - Write in professional UK government programme language.
 - Frame improvements constructively, not as blame.
-- Return valid JSON only, no markdown formatting, no backticks."""
+- - Return valid JSON only, no markdown formatting, no backticks.
+- Do not include any text before or after the JSON object.
+- Your entire response must be a single valid JSON object starting with { and ending with }."""
 
 LESSONS_USER_PROMPT = """Analyse the following project document and produce 
 a lessons learned report.

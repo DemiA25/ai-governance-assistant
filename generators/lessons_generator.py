@@ -1,4 +1,5 @@
 import json
+import re
 import anthropic
 from config import ANTHROPIC_API_KEY, MODEL, MAX_TOKENS
 from prompts.lessons_prompts import LESSONS_SYSTEM_PROMPT, LESSONS_USER_PROMPT
@@ -26,11 +27,29 @@ def generate_lessons_learned(document_text: str) -> dict:
 
     result = response.content[0].text
 
+    # Try parsing directly
     try:
         return json.loads(result)
     except json.JSONDecodeError:
-        cleaned = result.strip().strip("```json").strip("```").strip()
+        pass
+
+    # Strip markdown backticks
+    cleaned = result.strip()
+    cleaned = re.sub(r'^```(?:json)?\s*', '', cleaned)
+    cleaned = re.sub(r'\s*```$', '', cleaned)
+    cleaned = cleaned.strip()
+
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        pass
+
+    # Try to find JSON object in the response
+    match = re.search(r'\{.*\}', cleaned, re.DOTALL)
+    if match:
         try:
-            return json.loads(cleaned)
+            return json.loads(match.group())
         except json.JSONDecodeError:
-            return {"error": "Failed to parse lessons learned report. Please try again."}
+            pass
+
+    return {"error": "Failed to parse lessons learned report. Please try again."}
